@@ -88,13 +88,13 @@
             const authUI = document.getElementById('authUI');
             if (!authUI) return;
 
-            // เพิ่มบรรทัดนี้เพื่อป้องกัน Error สีแดงที่คุณเจอ
-            if (!user) {
+            // เช็คว่ามี user และอีเมลไหม ถ้าไม่มีให้กลับไปเป็นปุ่ม Login
+            if (!user || !user.email) {
                 authUI.innerHTML = `<button type="button" onclick="login()" class="btn btn-sm btn-outline-light rounded-pill px-3">เข้าสู่ระบบด้วย Google</button>`;
                 return;
             }
 
-            // ถ้ามี user ค่อยรันโค้ดข้างล่างนี้
+            // ถ้ามีข้อมูลครบแล้วค่อยแสดงชื่อและรูป
             const isAdmin = user.email === ADMIN_EMAIL;
             authUI.innerHTML = `
                 <div class="user-info" style="cursor: pointer; display: flex; align-items: center; gap: 5px;" onclick="logout()">
@@ -104,7 +104,7 @@
                 </div>`;
         }
 
-        // 2. ตรวจสอบสถานะทันทีที่โหลดหน้าเว็บ
+        // 2. ตรวจสอบสถานะการ Login ทันที
         auth.onAuthStateChanged(async (user) => {
             const mainActions = document.getElementById('mainActions');
             const banMessage = document.getElementById('banMessage');
@@ -127,10 +127,9 @@
             }
         });
 
-        // 3. จัดการข้อมูลหลัง Google Redirect
+        // 3. รับข้อมูลจากการ Redirect
         auth.getRedirectResult().then((result) => {
             if (result && result.user) {
-                console.log("Login Success!");
                 updateAuthUI(result.user);
             }
         }).catch((error) => {
