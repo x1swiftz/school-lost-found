@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>School Lost & Found - ศูนย์ของหายโรงเรียน</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-storage.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+
+    <style>
+        body { font-family: 'Prompt', sans-serif; background-color: #f0f2f5; }
+        .hero-section {
+            background: linear-gradient(135deg, #4e54c8 0%, #8f94fb 100%);
+            color: white; padding: 4rem 1rem; text-align: center;
+            border-radius: 0 0 40px 40px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            margin-bottom: 2rem; position: relative;
+        }
+        .auth-bar { position: absolute; top: 20px; right: 20px; z-index: 100; }
+        .card-item { 
+            transition: all 0.3s cubic-bezier(.25,.8,.25,1); 
+            border: none; border-radius: 15px; overflow: hidden; background: white; 
+        }
+        .card-item:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.1); }
+        .item-img { width: 100%; height: 180px; object-fit: cover; background-color: #e9ecef; }
+        .status-badge { position: absolute; top: 10px; right: 10px; padding: 4px 12px; border-radius: 20px; font-weight: 600; font-size: 0.75rem; z-index: 10; }
+        .user-info { background: rgba(255,255,255,0.2); padding: 5px 15px; border-radius: 30px; color: white; cursor: pointer; display: flex; align-items: center; gap: 10px; }
+        .loading-spinner { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.8); z-index: 9999; justify-content: center; align-items: center; flex-direction: column; }
+        .ban-overlay { background: #ffdede; color: #d63031; padding: 20px; border-radius: 15px; text-align: center; margin-bottom: 20px; display: none; border: 2px solid #fab1a0; }
+    </style>
+</head>
+<body>
+
+    <div id="loader" class="loading-spinner">
+        <div class="spinner-border text-primary" role="status"></div>
+        <p class="mt-2 fw-bold">กำลังดำเนินการ...</p>
+    </div>
+
+    <div class="hero-section">
+        <div class="auth-bar" id="authUI">
+            <button type="button" onclick="login()" class="btn btn-sm btn-outline-light rounded-pill px-3">เข้าสู่ระบบด้วย Google</button>
+        </div>
+
+        <h1 class="display-4 fw-bold"><i class="fas fa-search-plus"></i> Lost & Found</h1>
+        <p class="lead">เว็ปไซต์หาของหายภายในโรงเรียน</p>
+        
+        <div class="mt-4" id="mainActions" style="display: none;">
+            <button onclick="showForm('lost')" class="btn btn-light btn-custom text-danger me-2 shadow">แจ้งของหาย</button>
+            <button onclick="showForm('found')" class="btn btn-light btn-custom text-success shadow">แจ้งเจอของ</button>
+        </div>
+    </div>
+
+    <div class="container mb-5">
+        <div id="banMessage" class="ban-overlay shadow-sm">
+            <h4><i class="fas fa-user-slash"></i> บัญชีของคุณถูกระงับ!</h4>
+        </div>
+
+        <h4 class="mb-4 fw-bold">รายการล่าสุด</h4>
+        <div class="row g-4" id="itemsContainer"></div>
+    </div>
+
+    <script>
+        // 1. Firebase Config
+        const firebaseConfig = {
+          apiKey: "AIzaSyD-F7dDIx8NLLU6D1E2Ve9XW6wa_0SjQlw",
+          authDomain: "lost-and-found-best.firebaseapp.com",
+          projectId: "lost-and-found-best",
+          storageBucket: "lost-and-found-best.firebasestorage.app",
+          messagingSenderId: "466504538795",
+          appId: "1:466504538795:web:58f134d1219e1ff55875ee"
+        };
+        
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const auth = firebase.auth();
+        const storage = firebase.storage();
+        const ADMIN_EMAIL = "nattakitpaendee@gmail.com"; 
+
+        let currentUser = null;
+        let isBanned = false;
+
+        // ตรวจสอบสถานะการเข้าสู่ระบบแบบ Real-time
+        auth.onAuthStateChanged(async (user) => {
+            if (user) {
+                currentUser = user;
+                // เช็คการแบนจาก Firestore
+                const banDoc = await db.collection("bannedUsers").doc(user.email).get();
+                isBanned = banDoc.exists;
+                
+                document.getElementById('banMessage').style.display = isBanned ? 'block' : 'none';
+                document.getElementById('mainActions').style.display = isBanned ? 'none' : 'block';
+                updateAuthUI(user);
+            } else {
+                currentUser = null;
+                document.getElementById('authUI').innerHTML = `<button type="button" onclick="login()" class="btn btn-sm btn-outline-light rounded-pill px-3">เข้าสู่ระบบด้วย Google</button>`;
+                document.getElementById('mainActions').style.display = 'none';
+            }
+        });
+
+        function login() {
+            const provider = new firebase.auth.GoogleAuthProvider();
+            auth.signInWithPopup(provider).catch(err => {
+                console.error("Login Error:", err.code);
+                alert("เกิดข้อผิดพลาด: " + err.message);
+            });
+        }
+
+        function logout() { 
+            auth.signOut(); 
+            // ไม่ต้องใช้ location.reload() เพราะ onAuthStateChanged จะเปลี่ยน UI เอง
+        }
+
+        function updateAuthUI(user) {
+            const isAdmin = user.email === ADMIN_EMAIL;
+            document.getElementById('authUI').innerHTML = `
+                <div class="user-info" onclick="logout()">
+                    <img src="${user.photoURL}" width="25" class="rounded-circle">
+                    <small>${user.displayName} ${isAdmin ? '(Admin)' : ''}</small>
+                    <i class="fas fa-sign-out-alt ms-1"></i>
+                </div>
+            `;
+        }
+
+        // ฟังการอัปเดตข้อมูลจาก Firestore
+        db.collection("items").orderBy("timestamp", "desc").onSnapshot(snapshot => {
+            const container = document.getElementById('itemsContainer');
+            container.innerHTML = "";
+            snapshot.forEach(doc => {
+                const item = doc.data();
+                container.innerHTML += `
+                    <div class="col-md-6 col-lg-4">
+                        <div class="card card-item h-100 shadow-sm border-0">
+                            <span class="status-badge text-white ${item.type === 'lost' ? 'bg-danger' : 'bg-success'}">${item.type === 'lost' ? 'ตามหา' : 'เจอของ'}</span>
+                            <img src="${item.imageUrl || 'https://via.placeholder.com/400x200'}" class="item-img">
+                            <div class="card-body">
+                                <h5 class="fw-bold">${item.name}</h5>
+                                <p class="small text-muted"><i class="fas fa-map-marker-alt"></i> ${item.location}</p>
+                            </div>
+                        </div>
+                    </div>`;
+            });
+        });
+    </script>
+</body>
+</html>
