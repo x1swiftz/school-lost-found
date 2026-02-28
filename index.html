@@ -145,6 +145,16 @@
         }
 
         function updateAuthUI(user) {
+            const authUI = document.getElementById('authUI');
+            if (!authUI) return;
+
+            // เพิ่มบรรทัดนี้เพื่อเช็คว่ามียูเซอร์ไหม (แก้ปัญหา Error สีแดง)
+            if (!user || !user.email) {
+                authUI.innerHTML = `<button type="button" onclick="login()" class="btn btn-sm btn-outline-light rounded-pill px-3">เข้าสู่ระบบด้วย Google</button>`;
+                return;
+            }
+
+            // บรรทัดเดิมของคุณ (ที่เคยอยู่บรรทัด 148)
             const isAdmin = user.email === ADMIN_EMAIL;
             document.getElementById('authUI').innerHTML = `
                 <div class="user-info" onclick="logout()">
