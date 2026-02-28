@@ -148,9 +148,9 @@
     const authUI = document.getElementById('authUI');
     if (!authUI) return;
 
-    // ตรวจสอบก่อนว่ามียูเซอร์ล็อกอินอยู่จริงไหม (ป้องกัน Error null)
-    if (user && user.email) { 
-        // --- กรณีที่ Login แล้ว: แสดงชื่อ รูป และปุ่ม Logout ---
+    // แก้ไขจุดที่ทำให้ "ตัวแดง" (Null Check)
+    if (user && user.email) {
+        // กรณีที่มีคนล็อกอินแล้ว
         const isAdmin = user.email === ADMIN_EMAIL;
         authUI.innerHTML = `
             <div class="user-info" style="cursor: pointer; display: flex; align-items: center; gap: 5px;" onclick="logout()">
@@ -159,20 +159,10 @@
                 <i class="fas fa-sign-out-alt text-white-50 ms-1"></i>
             </div>`;
     } else {
-        // --- กรณีที่ยังไม่ Login (หรือ user เป็น null): แสดงปุ่ม Login ปกติ ---
+        // กรณีที่ยังไม่ล็อกอิน (user เป็น null)
         authUI.innerHTML = `<button type="button" onclick="login()" class="btn btn-sm btn-outline-light rounded-pill px-3">เข้าสู่ระบบด้วย Google</button>`;
     }
 }
-
-            // บรรทัดเดิมของคุณ (ที่เคยอยู่บรรทัด 148)
-            const isAdmin = user.email === ADMIN_EMAIL;
-            document.getElementById('authUI').innerHTML = `
-                <div class="user-info" onclick="logout()">
-                    <img src="${user.photoURL}" width="25" class="rounded-circle">
-                    <small>${user.displayName} ${isAdmin ? '(Admin)' : ''}</small>
-                    <i class="fas fa-sign-out-alt ms-1"></i>
-                </div>
-            `;
 
         // ฟังการอัปเดตข้อมูลจาก Firestore
         db.collection("items").orderBy("timestamp", "desc").onSnapshot(snapshot => {
