@@ -85,20 +85,31 @@
         let isBanned = false;
 
         // ตรวจสอบสถานะการเข้าสู่ระบบแบบ Real-time
-        auth.onAuthStateChanged(async (user) => {
-            if (user) {
+    auth.onAuthStateChanged(async (user) => {
+            const authUI = document.getElementById('authUI');
+            const mainActions = document.getElementById('mainActions');
+            const banMessage = document.getElementById('banMessage');
+
+            if (user && user.email) { // เพิ่มเงื่อนไขเช็ค user.email เพื่อป้องกัน Error
                 currentUser = user;
-                // เช็คการแบนจาก Firestore
-                const banDoc = await db.collection("bannedUsers").doc(user.email).get();
-                isBanned = banDoc.exists;
+                try {
+                    // เช็คการแบนจาก Firestore
+                    const banDoc = await db.collection("bannedUsers").doc(user.email).get();
+                    isBanned = banDoc.exists;
+                } catch (e) {
+                    console.error("Ban check error:", e);
+                    isBanned = false;
+                }
                 
-                document.getElementById('banMessage').style.display = isBanned ? 'block' : 'none';
-                document.getElementById('mainActions').style.display = isBanned ? 'none' : 'block';
+                banMessage.style.display = isBanned ? 'block' : 'none';
+                mainActions.style.display = isBanned ? 'none' : 'block';
                 updateAuthUI(user);
             } else {
                 currentUser = null;
-                document.getElementById('authUI').innerHTML = `<button type="button" onclick="login()" class="btn btn-sm btn-outline-light rounded-pill px-3">เข้าสู่ระบบด้วย Google</button>`;
-                document.getElementById('mainActions').style.display = 'none';
+                isBanned = false;
+                authUI.innerHTML = `<button type="button" onclick="login()" class="btn btn-sm btn-outline-light rounded-pill px-3">เข้าสู่ระบบด้วย Google</button>`;
+                mainActions.style.display = 'none';
+                banMessage.style.display = 'none';
             }
         });
 
