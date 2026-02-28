@@ -85,40 +85,52 @@
         let isBanned = false;
 
         // รับผลลัพธ์จากการ Login แบบ Redirect
+        function updateAuthUI(user) {
+            if (!user) return;
+            const isAdmin = user.email === ADMIN_EMAIL;
+            const authUI = document.getElementById('authUI');
+            if (authUI) {
+                authUI.innerHTML = `
+                    <div class="user-info" style="cursor: pointer;" onclick="logout()">
+                        <img src="${user.photoURL}" width="25" class="rounded-circle me-1">
+                        <small>${user.displayName} ${isAdmin ? '(Admin)' : ''}</small>
+                        <i class="fas fa-sign-out-alt ms-1"></i>
+                    </div>`;
+            }
+        }
+
+        // 2. รับข้อมูลทันทีที่กลับมาจาก Google Redirect
         auth.getRedirectResult().then((result) => {
-            if (result.user) {
-                console.log("เข้าสู่ระบบสำเร็จ!");
+            if (result && result.user) {
+                console.log("เข้าสู่ระบบสำเร็จ (Redirect)!");
+                currentUser = result.user;
+                updateAuthUI(result.user);
             }
         }).catch((error) => {
             console.error("Redirect Error:", error);
         });
 
-        // บรรทัดที่ 88 เดิมของคุณ (auth.onAuthStateChanged...)
-    auth.onAuthStateChanged(async (user) => {
+        // 3. ตรวจสอบสถานะการ Login (ฉบับปรับปรุง)
+        auth.onAuthStateChanged(async (user) => {
             const authUI = document.getElementById('authUI');
             const mainActions = document.getElementById('mainActions');
             const banMessage = document.getElementById('banMessage');
 
-            if (user && user.email) { // เพิ่มเงื่อนไขเช็ค user.email เพื่อป้องกัน Error
+            if (user && user.email) {
                 currentUser = user;
                 try {
-                    // เช็คการแบนจาก Firestore
                     const banDoc = await db.collection("bannedUsers").doc(user.email).get();
                     isBanned = banDoc.exists;
-                } catch (e) {
-                    console.error("Ban check error:", e);
-                    isBanned = false;
-                }
+                } catch (e) { isBanned = false; }
                 
-                banMessage.style.display = isBanned ? 'block' : 'none';
-                mainActions.style.display = isBanned ? 'none' : 'block';
+                if (banMessage) banMessage.style.display = isBanned ? 'block' : 'none';
+                if (mainActions) mainActions.style.display = isBanned ? 'none' : 'block';
                 updateAuthUI(user);
             } else {
                 currentUser = null;
-                isBanned = false;
-                authUI.innerHTML = `<button type="button" onclick="login()" class="btn btn-sm btn-outline-light rounded-pill px-3">เข้าสู่ระบบด้วย Google</button>`;
-                mainActions.style.display = 'none';
-                banMessage.style.display = 'none';
+                if (authUI) authUI.innerHTML = `<button type="button" onclick="login()" class="btn btn-sm btn-outline-light rounded-pill px-3">เข้าสู่ระบบด้วย Google</button>`;
+                if (mainActions) mainActions.style.display = 'none';
+                if (banMessage) banMessage.style.display = 'none';
             }
         });
 
