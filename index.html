@@ -84,7 +84,16 @@
         let currentUser = null;
         let isBanned = false;
 
-        // ตรวจสอบสถานะการเข้าสู่ระบบแบบ Real-time
+        // รับผลลัพธ์จากการ Login แบบ Redirect
+        auth.getRedirectResult().then((result) => {
+            if (result.user) {
+                console.log("เข้าสู่ระบบสำเร็จ!");
+            }
+        }).catch((error) => {
+            console.error("Redirect Error:", error);
+        });
+
+        // บรรทัดที่ 88 เดิมของคุณ (auth.onAuthStateChanged...)
     auth.onAuthStateChanged(async (user) => {
             const authUI = document.getElementById('authUI');
             const mainActions = document.getElementById('mainActions');
