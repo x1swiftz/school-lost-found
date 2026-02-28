@@ -115,10 +115,8 @@
 
         function login() {
             const provider = new firebase.auth.GoogleAuthProvider();
-            auth.signInWithPopup(provider).catch(err => {
-                console.error("Login Error:", err.code);
-                alert("เกิดข้อผิดพลาด: " + err.message);
-            });
+            // เปลี่ยนจาก signInWithPopup เป็น signInWithRedirect
+            auth.signInWithRedirect(provider); 
         }
 
         function logout() { 
