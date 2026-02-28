@@ -84,35 +84,26 @@
         let currentUser = null;
         let isBanned = false;
 
-        // รับผลลัพธ์จากการ Login แบบ Redirect
-        function updateAuthUI(user) {
-            if (!user) return;
-            const isAdmin = user.email === ADMIN_EMAIL;
+    function updateAuthUI(user) {
             const authUI = document.getElementById('authUI');
+            if (!user) {
+                if (authUI) authUI.innerHTML = `<button type="button" onclick="login()" class="btn btn-sm btn-outline-light rounded-pill px-3">เข้าสู่ระบบด้วย Google</button>`;
+                return;
+            }
+            
+            const isAdmin = user.email === ADMIN_EMAIL;
             if (authUI) {
                 authUI.innerHTML = `
-                    <div class="user-info" style="cursor: pointer;" onclick="logout()">
-                        <img src="${user.photoURL}" width="25" class="rounded-circle me-1">
-                        <small>${user.displayName} ${isAdmin ? '(Admin)' : ''}</small>
-                        <i class="fas fa-sign-out-alt ms-1"></i>
+                    <div class="user-info" style="cursor: pointer; display: flex; align-items: center; gap: 5px;" onclick="logout()">
+                        <img src="${user.photoURL}" width="25" class="rounded-circle">
+                        <small class="text-white">${user.displayName} ${isAdmin ? '(Admin)' : ''}</small>
+                        <i class="fas fa-sign-out-alt text-white-50 ms-1"></i>
                     </div>`;
             }
         }
 
-        // 2. รับข้อมูลทันทีที่กลับมาจาก Google Redirect
-        auth.getRedirectResult().then((result) => {
-            if (result && result.user) {
-                console.log("เข้าสู่ระบบสำเร็จ (Redirect)!");
-                currentUser = result.user;
-                updateAuthUI(result.user);
-            }
-        }).catch((error) => {
-            console.error("Redirect Error:", error);
-        });
-
-        // 3. ตรวจสอบสถานะการ Login (ฉบับปรับปรุง)
+        // 2. ตรวจสอบสถานะทันทีที่โหลดหน้าเว็บ
         auth.onAuthStateChanged(async (user) => {
-            const authUI = document.getElementById('authUI');
             const mainActions = document.getElementById('mainActions');
             const banMessage = document.getElementById('banMessage');
 
@@ -128,10 +119,20 @@
                 updateAuthUI(user);
             } else {
                 currentUser = null;
-                if (authUI) authUI.innerHTML = `<button type="button" onclick="login()" class="btn btn-sm btn-outline-light rounded-pill px-3">เข้าสู่ระบบด้วย Google</button>`;
+                updateAuthUI(null);
                 if (mainActions) mainActions.style.display = 'none';
                 if (banMessage) banMessage.style.display = 'none';
             }
+        });
+
+        // 3. จัดการข้อมูลหลัง Google Redirect
+        auth.getRedirectResult().then((result) => {
+            if (result && result.user) {
+                console.log("Login Success!");
+                updateAuthUI(result.user);
+            }
+        }).catch((error) => {
+            console.error("Auth Error:", error);
         });
 
         function login() {
